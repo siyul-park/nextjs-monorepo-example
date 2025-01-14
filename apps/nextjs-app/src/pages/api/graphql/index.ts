@@ -6,7 +6,7 @@ import { maxAliasesPlugin } from '@escape.tech/graphql-armor-max-aliases';
 import { maxDepthPlugin } from '@escape.tech/graphql-armor-max-depth';
 import { maxDirectivesPlugin } from '@escape.tech/graphql-armor-max-directives';
 import { maxTokensPlugin } from '@escape.tech/graphql-armor-max-tokens';
-import { createYoga } from 'graphql-yoga';
+import { createYoga, useExecutionCancellation } from 'graphql-yoga';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { graphqlSchema } from '@/server/graphql/graphqlSchema';
 
@@ -47,6 +47,7 @@ export default createYoga<{
   parserAndValidationCache: true,
   plugins: [
     useGraphQlJit(),
+    useExecutionCancellation(),
     useValidationCache(),
     characterLimitPlugin(
       // // @link https://escape.tech/graphql-armor/docs/plugins/character-limit
@@ -57,7 +58,7 @@ export default createYoga<{
     costLimitPlugin(
       // @link https://escape.tech/graphql-armor/docs/plugins/cost-limit
       {
-        maxCost: 5_000,
+        maxCost: 5000,
         objectCost: 2,
         scalarCost: 1,
         depthCostFactor: 1.5,
@@ -77,7 +78,7 @@ export default createYoga<{
     maxTokensPlugin(
       // @link https://escape.tech/graphql-armor/docs/plugins/max-tokens
       {
-        n: 1_000,
+        n: 1000,
       }
     ),
     maxAliasesPlugin({

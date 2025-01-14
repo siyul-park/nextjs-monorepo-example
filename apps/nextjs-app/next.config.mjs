@@ -27,7 +27,7 @@ const workspaceRoot = path.resolve(
  * @type {import('type-fest').PackageJson}
  */
 const packageJson = JSON.parse(
-  readFileSync(new URL('./package.json', import.meta.url)).toString('utf-8')
+  readFileSync(new URL('package.json', import.meta.url)).toString('utf8')
 );
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -121,14 +121,6 @@ const nextConfig = {
     // emotion: true,
   },
 
-  sentry: {
-    hideSourceMaps: true,
-    // To disable the automatic instrumentation of API route handlers and server-side data fetching functions
-    // In other words, disable if you prefer to explicitly handle sentry per api routes (ie: wrapApiHandlerWithSentry)
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/#configure-server-side-auto-instrumentation
-    autoInstrumentServerFunctions: false,
-  },
-
   // @link https://nextjs.org/docs/basic-features/image-optimization
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -169,6 +161,16 @@ const nextConfig = {
     ...(buildEnv.NEXT_BUILD_ENV_OUTPUT === 'standalone'
       ? { outputFileTracingRoot: workspaceRoot }
       : {}),
+
+    // https://github.com/vercel/turbo/issues/4832
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
 
     // Useful in conjunction with to `output: 'standalone'` and `outputFileTracing: true`
     // to keep lambdas sizes / docker images low when vercel/nft isn't able to
@@ -270,21 +272,30 @@ const nextConfig = {
       config.plugins.push(new PrismaPlugin());
     }
 
-    config.module.rules.push({
-      test: /\.svg$/,
-      issuer: /\.(js|ts)x?$/,
-      use: [
-        {
-          loader: '@svgr/webpack',
-          // https://react-svgr.com/docs/webpack/#passing-options
-          options: {
-            svgo: isProd,
-            // @link https://github.com/svg/svgo#configuration
-            // svgoConfig: { }
-          },
-        },
-      ],
-    });
+    // Grab the existing rule that handles SVG imports
+    const fileLoaderRule = config.module.rules.find(
+      (/** @type {{ test: { test: (arg0: string) => any; }; }} */ rule) =>
+        rule.test?.test?.('.svg')
+    );
+
+    config.module.rules.push(
+      // Reapply the existing rule, but only for svg imports ending in ?url
+      {
+        ...fileLoaderRule,
+        test: /\.svg$/i,
+        resourceQuery: /url/, // *.svg?url
+      },
+      // Convert all other *.svg imports to React components
+      {
+        test: /\.svg$/i,
+        issuer: fileLoaderRule.issuer,
+        resourceQuery: { not: [...fileLoaderRule.resourceQuery.not, /url/] }, // exclude if *.svg?url
+        use: ['@svgr/webpack'],
+      }
+    );
+
+    // Modify the file loader rule to ignore *.svg, since we have it handled now.
+    fileLoaderRule.exclude = /\.svg$/i;
 
     return config;
   },
@@ -297,7 +308,10 @@ const nextConfig = {
 
 let config = nextConfig;
 
-if (buildEnv.NEXT_BUILD_ENV_SENTRY_ENABLED === true) {
+if (
+  buildEnv.NEXT_BUILD_ENV_SENTRY_ENABLED === true &&
+  process.env.SENTRY_AUTH_TOKEN !== ''
+) {
   try {
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/
     const withSentryConfig = await import('@sentry/nextjs').then(
@@ -313,16 +327,12 @@ if (buildEnv.NEXT_BUILD_ENV_SENTRY_ENABLED === true) {
       // For all available options, see:
       // https://github.com/getsentry/sentry-webpack-plugin#options.
       // silent: isProd, // Suppresses all logs
-      dryRun: buildEnv.NEXT_BUILD_ENV_SENTRY_UPLOAD_DRY_RUN === true,
       silent: buildEnv.NEXT_BUILD_ENV_SENTRY_DEBUG === false,
     });
     console.log(`- ${pc.green('info')} Sentry enabled for this build`);
   } catch {
     console.log(`- ${pc.red('error')} Could not enable sentry, import failed`);
   }
-} else {
-  const { sentry, ...rest } = config;
-  config = rest;
 }
 
 if (process.env.ANALYZE === 'true') {

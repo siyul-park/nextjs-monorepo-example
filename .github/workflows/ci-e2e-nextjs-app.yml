@@ -55,7 +55,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: ⏩ TurboRepo local server
-        uses: felixmosh/turborepo-gh-artifacts@v2
+        uses: felixmosh/turborepo-gh-artifacts@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           server-token: ${{ env.TURBO_TOKEN }}
@@ -64,7 +64,7 @@ jobs:
         uses: ./.github/actions/yarn-nm-install
 
       - name: ♻️ Restore nextjs-app related caches
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ${{ github.workspace }}/apps/nextjs-app/.next/cache
@@ -105,7 +105,7 @@ jobs:
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 30
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nextjs-app-playwright-test-results-${{ runner.os }}

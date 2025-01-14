@@ -1,11 +1,11 @@
-ARG NODE_VERSION=20
-ARG ALPINE_VERSION=3.18
+ARG NODE_VERSION=20.18
+ARG ALPINE_VERSION=3.20
 
 #############################################################
 # Stage 1 - App extraction / pruning                        #
 #############################################################
 
-FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} as app-builder
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS app-builder
 
 RUN apk add --no-cache git jq && corepack enable
 
@@ -26,7 +26,7 @@ RUN turbo prune --scope=nextjs-app --docker --out-dir=./out/nextjs-app/
 # Stage 2 - App installation                                #
 #############################################################
 
-FROM app-builder as app-installer
+FROM app-builder AS app-installer
 
 # This will disable runtime env validation
 # see ./src/config/server-runtime-env.config.mjs
@@ -45,6 +45,7 @@ ENV YARN_ENABLE_GLOBAL_CACHE=false
 ENV YARN_ENABLE_MIRROR=false
 ENV YARN_NODE_LINKER=node-modules
 ENV YARN_NM_MODE=hardlinks-local
+ENV YARN_ENABLE_HARDENED_MODE=0
 # If using different compression level than in local (recommended: prefer to not do this)
 #ENV YARN_COMPRESSION_LEVEL 0
 #ENV YARN_CHECKSUM_BEHAVIOR ignore
@@ -78,7 +79,9 @@ RUN yarn turbo run build --filter=nextjs-app...
 # Stage 3 - App runner                                      #
 #############################################################
 
-FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} as app-runner
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS app-runner
+
+ARG NEXTJS_APP_PORT
 
 # Bort PORT / HOSTNAME envs are respected by nextjs start/dev.
 ENV HOSTNAME=0.0.0.0

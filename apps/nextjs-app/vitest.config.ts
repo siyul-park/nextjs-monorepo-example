@@ -1,9 +1,9 @@
 import react from '@vitejs/plugin-react-swc';
-import svgr from 'vite-plugin-svgr';
+import magicalSvg from 'vite-plugin-magical-svg';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
-
 const testFiles = ['./src/**/*.test.{js,jsx,ts,tsx}'];
+
 export default defineConfig({
   plugins: [
     react({
@@ -11,32 +11,43 @@ export default defineConfig({
       jsxImportSource: '@emotion/react',
     }),
     tsconfigPaths(),
-    svgr({
-      // svgr options: https://react-svgr.com/docs/options/
-      svgrOptions: {},
+    magicalSvg({
+      target: 'react',
+      svgo: false,
     }),
   ],
+  cacheDir: '../../.cache/vitest/nextjs-app',
   test: {
     globals: true,
-    /*
     deps: {
       optimizer: {
         web: {
-          enabled: false,
+          enabled: true,
         },
-        ssr: { enabled: false },
+        ssr: { enabled: true },
       },
-    }, */
+    },
     typecheck: {
       enabled: false,
     },
-    pool: 'threads',
+    // threads is good, vmThreads is faster (perf++) but comes with possible memory leaks
+    // @link https://vitest.dev/config/#vmthreads
+    pool: 'forks',
     poolOptions: {
+      vmThreads: {
+        // useAtomics -> perf+
+        // @link https://vitest.dev/config/#pooloptions-threads-useatomics
+        useAtomics: true,
+      },
       threads: {
-        minThreads: 1,
-        maxThreads: 16,
-        // useAtomics: true,
-        // isolate: false,
+        // minThreads: 4,
+        // maxThreads: 16,
+        // useAtomics -> perf+
+        // @link https://vitest.dev/config/#pooloptions-threads-useatomics
+        useAtomics: true,
+        // isolate to false makes perf++ but comes with limitations
+        // @link https://vitest.dev/config/#pooloptions-threads-isolate
+        isolate: true,
       },
     },
     environmentMatchGlobs: [
@@ -45,9 +56,6 @@ export default defineConfig({
     ],
     passWithNoTests: false,
     setupFiles: './config/tests/setupVitest.ts',
-    cache: {
-      dir: '../../.cache/vitest/nextjs-app',
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'clover'],

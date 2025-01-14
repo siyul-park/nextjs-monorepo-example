@@ -13,7 +13,6 @@ const isProd = process.env.NODE_ENV === 'production';
 const falseOnCi = !isCI;
 
 /**
- * @todo working with jsdoc/mjs is limited, see later on how to improve this
  * @satisfies { Record<`NEXT_BUILD_ENV_${string}`, import('zod').ZodSchema> }
  */
 const schema = {
@@ -39,7 +38,6 @@ const schema = {
   // Sentry related
   // --------------------------------------------------------------------
   NEXT_BUILD_ENV_SENTRY_ENABLED: zConvertTruthyStrToBool(false),
-  NEXT_BUILD_ENV_SENTRY_UPLOAD_DRY_RUN: zConvertTruthyStrToBool(true),
   NEXT_BUILD_ENV_SENTRY_DEBUG: zConvertTruthyStrToBool(false),
   NEXT_BUILD_ENV_SENTRY_TRACING: zConvertTruthyStrToBool(false),
 };
